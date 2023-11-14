@@ -16,7 +16,7 @@
           "Player " + (player.id + 1) + " name: "
         }}</label>
         <input type="text" v-model="player.name" /><br /><br />
-        <img :src="player.card?.images?.png" />
+        <img :src="player.image" />
       </div>
       <button @click="startGame()">Start Game!</button>
     </div>
@@ -25,7 +25,7 @@
         <h4>{{ player.name }}</h4>
         <div>
           <div class="card">
-            <img :src="player.card?.images?.png" />
+            <img :src="player.image" />
             <!-- <img :src="cardOne?.images?.png" /> -->
           </div>
         </div>
@@ -54,6 +54,13 @@ export default defineComponent({
       deckID = ref(null);
     let playerArr = ref<Player[]>([]);
 
+    const suitScore = new Map<string, number>([
+      ["DIAMONDS", 0],
+      ["CLUBS", 1],
+      ["HEARTS", 2],
+      ["SPADES", 3],
+    ]);
+
     watchEffect(() => {
       console.log("WATCHER CALLED");
       function constructArr() {
@@ -64,18 +71,60 @@ export default defineComponent({
           playerArr.value[count] = {
             id: count,
             name: "",
-            suite: "",
             points: 0,
-            card: {},
+            value: 0,
+            suit: "",
+            image: "",
+            // card: {
+            //   code: "",
+            //   images: "",
+            //   value: 0,
+            //   suit: "",
+            // },
           };
         }
       }
       constructArr();
     });
 
-    console.log(playerArr.value);
+    function convertPoints(input: string): number {
+      switch (input) {
+        case "JACK":
+          return 11;
+        case "QUEEN":
+          return 12;
+        case "KING":
+          return 13;
+        case "ACE":
+          return 14;
+        default:
+          break;
+      }
+      return parseInt(input);
+    }
 
-    function startGame() {
+    function calculateScore(): number {
+      let currentHighest;
+      let playerID = playerArr.value[0].id;
+      currentHighest = playerArr.value[0].value;
+      for (let count = 1; count < playerNum.value; count++) {
+        if (currentHighest < playerArr.value[count].value) {
+          currentHighest = playerArr.value[count].value;
+          playerID = playerArr.value[count].id;
+        }
+        if (currentHighest === playerArr.value[count].value) {
+          let comp1 = suitScore.get(playerArr.value[playerID].suit);
+          let comp2 = suitScore.get(playerArr.value[count].suit);
+          if (comp1 && comp2 && comp1 < comp2) {
+            console.log("CHANGEEEE");
+            currentHighest = comp2;
+          }
+        }
+      }
+      return playerID;
+    }
+
+    async function startGame() {
       getDeck();
     }
 
@@ -119,19 +168,31 @@ export default defineComponent({
       const { cards } = data;
       console.log(cards);
       for (let count = 0; count < playerNum.value; count++) {
-        playerArr.value[count].card = cards[count];
-        playerArr.value[count].suite = cards[count];
+        // playerArr.value[count].card = cards[count];
+        playerArr.value[count].suit = cards[count].suit;
+        playerArr.value[count].value = convertPoints(cards[count].value);
+        playerArr.value[count].image = cards[count].image;
         console.log("Card ", cards[count]);
+        console.log("VALUEEEEEE", playerArr.value[count].value);
       }
       for (let count = 0; count < playerNum.value; count++) {
-        console.log(playerArr.value[count].card);
+        console.log("PRINTING MY STUFF");
+        console.log(playerArr.value[count].suit);
+        console.log(playerArr.value[count].value);
+        console.log(playerArr.value[count].image);
       }
 
+      const roundWinner = calculateScore();
+      playerArr.value[roundWinner].points++;
+      console.log("ROUNDWINNER", roundWinner);
       console.log("remaining: " + remaining);
       console.log("data getCards: ", data);
 
       if (remaining < playerNum.value) {
         gameOver.value = true;
+        while (playerArr.value.length) {
+          playerArr.value.pop();
+        }
       }
     }
 
@@ -157,5 +218,10 @@ export default defineComponent({
   text-align: center;
   color: #2c3e50;
   margin-top: 60px;
+}
+.flex-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 }
 </style>

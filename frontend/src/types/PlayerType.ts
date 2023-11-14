@@ -1,7 +1,10 @@
+import { Card } from "./CardType";
+
 export interface Player {
   id: number;
   name: string;
   points: number;
-  suite: string;
-  card: {};
+  value: number;
+  suit: string;
+  image: string;
 }
