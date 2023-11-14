@@ -1,17 +1,41 @@
 <template>
   <div>
-    <div>Hello World</div>
-    <!-- <img alt="Vue logo" src="./assets/logo.png" /> -->
-    <!-- <HelloWorld msg="Welcome to Your Vue.js App" /> -->
+    <img alt="Vue logo" src="./assets/logo.png" />
+    <h1>War Game!</h1>
   </div>
 </template>
 
-<script>
-export default {
-  name: "App",
+<script lang="ts">
+import { defineComponent, ref } from "vue";
+import axios from "axios";
 
-  setup() {},
-};
+export default defineComponent({
+  name: "App",
+  setup() {
+    // const Player = {}
+    let gameOver = ref(true),
+      cardOne = ref({}),
+      cardTwo = ref({}),
+      deckID = ref(null),
+      playerOneScore = ref(0),
+      playerTwoScore = ref(0);
+    console.log(cardOne, cardTwo, playerOneScore, playerTwoScore);
+
+    async function getDeck() {
+      gameOver.value = false;
+      if (deckID.value == null) {
+        const { data } = await axios.get(
+          "https://www.deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1"
+        );
+        deckID.value = data.deck_id;
+        console.log("data getDeck", data);
+        console.log(deckID);
+      }
+    }
+    getDeck();
+    return { getDeck };
+  },
+});
 </script>
 
 <style>
