@@ -1,5 +1,3 @@
-import { Card } from "./CardType";
-
 export interface Player {
   id: number;
   name: string;

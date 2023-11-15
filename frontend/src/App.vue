@@ -1,43 +1,83 @@
 <template>
   <div>
-    <img alt="Vue logo" src="./assets/logo.png" />
     <h1>War Game!</h1>
-    <div id="app" v-if="gameOver">
-      <label for="player_count">Number of players:</label>
-      <select id="player_count" name="player_count" v-model="playerNum">
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-      </select>
-      <div v-for="player in playerArr" :key="player.id">
-        <label for="{{player.name}}">{{
-          "Player " + (player.id + 1) + " name: "
-        }}</label>
-        <input type="text" v-model="player.name" /><br /><br />
-        <img :src="player.image" />
+    <div v-if="gameOverScreen" style="font-size: 50px">
+      <div>
+        The winner is:
+        <b>{{
+          playerArr[winnerID].name
+            ? playerArr[winnerID].name + "!!"
+            : "Player " + playerArr[winnerID].id
+        }}</b>
       </div>
-      <button @click="startGame()">Start Game!</button>
+      <button @click="restartGame()">Restart!</button>
     </div>
-    <div v-if="!gameOver" id="game">
-      <div v-for="player in playerArr" :key="player.id">
-        <h4>{{ player.name }}</h4>
-        <div>
-          <div class="card">
+
+    <div v-if="!gameOverScreen">
+      <div id="app" v-if="gameOver">
+        <label for="player_count">Number of players:</label>
+        <select id="player_count" name="player_count" v-model="playerNum">
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          Í
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+        <div v-for="player in playerArr" :key="player.id">
+          <div>
+            <label for="{{player.name}}">{{
+              "Player " + (player.id + 1) + " name: "
+            }}</label>
+            <input type="text" v-model="player.name" /><br /><br />
             <img :src="player.image" />
-            <!-- <img :src="cardOne?.images?.png" /> -->
           </div>
         </div>
+
+        <button @click="startGame()">Start Game!</button>
       </div>
-      <div>
-        <button @click="getCards()">Draw Cards</button>
-      </div>
-      <div>
-        <button @click="restartGame()">Restart Game</button>
+      <div v-if="!gameOver" id="game">
+        <div
+          style="display: flex; flex-direction: row; justify-content: center"
+        >
+          <div
+            v-for="player in playerArr"
+            :key="player.id"
+            style="margin: 15px; padding: 10px"
+          >
+            <div
+              v-if="player.image"
+              style="
+                display: flex;
+                flex-direction: row;
+                justify-content: center;
+              "
+            >
+              <h4 style="margin-right: 10px">
+                {{ player.name ? player.name : "Player " + (player.id + 1) }}
+              </h4>
+              <h4>{{ "Score: " + player.points }}</h4>
+            </div>
+
+            <div
+              style="
+                display: flex;
+                flex-direction: row;
+                justify-content: center;
+              "
+            >
+              <img :src="player.image" style="width: 100px" />
+            </div>
+          </div>
+        </div>
+        <div>
+          <button @click="getCards()">Draw Cards</button>
+        </div>
+        <div>
+          <button @click="restartGame()">Restart Game</button>
+        </div>
       </div>
     </div>
-    You selected playernums: <b>{{ playerNum }}</b>
   </div>
 </template>
 
@@ -50,9 +90,11 @@ export default defineComponent({
   name: "App",
   setup() {
     let playerNum = ref(2);
-    let gameOver = ref(true),
-      deckID = ref(null);
+    let gameOverScreen = ref(false);
+    let gameOver = ref(true);
+    let deckID = ref(null);
     let playerArr = ref<Player[]>([]);
+    let winnerID = ref(0);
 
     const suitScore = new Map<string, number>([
       ["DIAMONDS", 0],
@@ -62,7 +104,6 @@ export default defineComponent({
     ]);
 
     watchEffect(() => {
-      console.log("WATCHER CALLED");
       function constructArr() {
         while (playerArr.value.length) {
           playerArr.value.pop();
@@ -75,12 +116,6 @@ export default defineComponent({
             value: 0,
             suit: "",
             image: "",
-            // card: {
-            //   code: "",
-            //   images: "",
-            //   value: 0,
-            //   suit: "",
-            // },
           };
         }
       }
@@ -116,7 +151,6 @@ export default defineComponent({
           let comp1 = suitScore.get(playerArr.value[playerID].suit);
           let comp2 = suitScore.get(playerArr.value[count].suit);
           if (comp1 && comp2 && comp1 < comp2) {
-            console.log("CHANGEEEE");
             currentHighest = comp2;
           }
         }
@@ -124,40 +158,23 @@ export default defineComponent({
       return playerID;
     }
 
-    async function startGame() {
-      getDeck();
-    }
-
-    async function restartGame() {
-      gameOver.value = true;
-      const { data } = await axios.get(
-        "https://www.deckofcardsapi.com/api/deck/new/"
-      );
-
-      console.log(data.deck_id);
-      axios.get(
-        "https://www.deckofcardsapi.com/api/deck/" + data.deck_id + "/shuffle/"
-      );
-      deckID.value = data.deck_id;
-      console.log("Restart Game called");
-      while (playerArr.value.length) {
-        playerArr.value.pop();
-      }
-    }
-
-    async function getDeck() {
-      gameOver.value = false;
-      if (deckID.value == null) {
-        const { data } = await axios.get(
-          "https://www.deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1"
-        );
-        deckID.value = data.deck_id;
-        console.log("data getDeck", data);
-        console.log(deckID);
+    function findWinnerID(): void {
+      let mostPoints = 0;
+      for (let count = 0; count < playerNum.value; count++) {
+        if (mostPoints < playerArr.value[count].points) {
+          mostPoints = playerArr.value[count].points;
+          winnerID.value = playerArr.value[count].id;
+        }
       }
     }
 
     async function getCards() {
+      const button = document.querySelector("button");
+
+      if (button) {
+        button.disabled = true;
+      }
+
       const { data } = await axios.get(
         "https://www.deckofcardsapi.com/api/deck/" +
           deckID.value +
@@ -165,46 +182,66 @@ export default defineComponent({
           playerNum.value
       );
       const remaining = data.remaining;
+
       const { cards } = data;
-      console.log(cards);
       for (let count = 0; count < playerNum.value; count++) {
-        // playerArr.value[count].card = cards[count];
         playerArr.value[count].suit = cards[count].suit;
         playerArr.value[count].value = convertPoints(cards[count].value);
         playerArr.value[count].image = cards[count].image;
-        console.log("Card ", cards[count]);
-        console.log("VALUEEEEEE", playerArr.value[count].value);
-      }
-      for (let count = 0; count < playerNum.value; count++) {
-        console.log("PRINTING MY STUFF");
-        console.log(playerArr.value[count].suit);
-        console.log(playerArr.value[count].value);
-        console.log(playerArr.value[count].image);
       }
 
       const roundWinner = calculateScore();
       playerArr.value[roundWinner].points++;
-      console.log("ROUNDWINNER", roundWinner);
-      console.log("remaining: " + remaining);
-      console.log("data getCards: ", data);
 
       if (remaining < playerNum.value) {
         gameOver.value = true;
-        while (playerArr.value.length) {
-          playerArr.value.pop();
-        }
+        gameOverScreen.value = true;
+        findWinnerID();
+      }
+      if (button) {
+        button.disabled = false;
       }
     }
 
-    // getDeck();
+    async function restartGame() {
+      gameOver.value = true;
+      gameOverScreen.value = false;
+
+      while (playerArr.value.length) {
+        playerArr.value.pop();
+      }
+      const { data } = await axios.get(
+        "https://www.deckofcardsapi.com/api/deck/new/"
+      );
+
+      axios.get(
+        "https://www.deckofcardsapi.com/api/deck/" + data.deck_id + "/shuffle/"
+      );
+      deckID.value = data.deck_id;
+      while (playerArr.value.length) {
+        playerArr.value.pop();
+      }
+    }
+
+    async function startGame() {
+      gameOver.value = false;
+      if (deckID.value == null) {
+        const { data } = await axios.get(
+          "https://www.deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1"
+        );
+        deckID.value = data.deck_id;
+      }
+    }
+
     return {
-      getDeck,
       playerNum,
       playerArr,
+      winnerID,
       getCards,
       gameOver,
       restartGame,
       startGame,
+      gameOverScreen,
     };
   },
 });
